@@ -11,7 +11,7 @@ from gym.spaces import Discrete
 from gym_env.rendering import PygletWindow, WHITE, RED, GREEN, BLUE
 from tools.hand_evaluator import get_winner
 from tools.helper import flatten
-
+from stringcolor import *
 # pylint: disable=import-outside-toplevel
 
 log = logging.getLogger(__name__)
@@ -470,7 +470,7 @@ class HoldemTable(Env):
         if self.funds_plot:
             self.funds_history.reset_index(drop=True).plot()
         log.info(self.funds_history)
-        plt.show()
+        # plt.show()
 
         winner_in_episodes.append(self.winner_ix)
         league_table = pd.Series(winner_in_episodes).value_counts()
@@ -647,6 +647,27 @@ class HoldemTable(Env):
         self.deck = []  # contains cards in the deck
         _ = [self.deck.append(x + y) for x in values for y in suites]
 
+    def cardShow(self, cards):
+        suites_emoji = {
+            "S": "♠",
+            "D": "♦",
+            "H": "♥",
+            "C": "♣"
+        }
+        rst = []
+        for c in cards:
+            txt = ""
+            if c[1] == "S":
+                txt = cs(c[0] + suites_emoji[c[1]], 'Black', "White").bold()
+            if c[1] == "D":
+                txt = cs(c[0] + suites_emoji[c[1]], 'DeepPink4').bold()
+            if c[1] == "H":
+                txt = cs(c[0] + suites_emoji[c[1]], 'Red').bold()
+            if c[1] == "C":
+                txt = cs(c[0] + suites_emoji[c[1]], 'LightGray13', "White").bold()
+            rst.append(str(txt))
+        return ",".join(rst)
+
     def _distribute_cards(self):
         log.info(f"Dealer is at position {self.dealer_pos}")
         for player in self.players:
@@ -656,13 +677,13 @@ class HoldemTable(Env):
             for _ in range(2):
                 card = np.random.randint(0, len(self.deck))
                 player.cards.append(self.deck.pop(card))
-            log.info(f"Player {player.seat} got {player.cards} and ${player.stack}")
+            log.info(f"Player {player.seat} got {self.cardShow(player.cards)} and ${player.stack}")
 
     def _distribute_cards_to_table(self, amount_of_cards):
         for _ in range(amount_of_cards):
             card = np.random.randint(0, len(self.deck))
             self.table_cards.append(self.deck.pop(card))
-        log.info(f"Cards on table: {self.table_cards}")
+        log.info(f"Cards on table: {self.cardShow(self.table_cards)}")
 
     def render(self, mode='human'):
         """Render the current state"""

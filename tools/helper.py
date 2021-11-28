@@ -12,6 +12,7 @@ from collections import Iterable  # pylint: disable=no-name-in-module
 from configparser import ConfigParser, ExtendedInterpolation
 from logging import handlers
 from multiprocessing.pool import ThreadPool
+import click
 
 import pandas as pd
 
@@ -19,6 +20,16 @@ CONFIG_FILENAME = 'config.ini'
 log = logging.getLogger(__name__)
 COMPUTER_NAME = os.getenv('COMPUTERNAME')
 ON_CI = os.environ.get('ENV') != 'CI'
+
+class RemoveColorFilter(logging.Filter):
+    def filter(self, record):
+        try:
+            if record and record.msg and isinstance(record.msg, str):
+                record.msg = click.unstyle(record.msg)
+        except ValueError:
+            return True
+        else:
+            return True
 
 class Singleton(type):
     """
@@ -99,6 +110,9 @@ def init_logger(screenlevel, filename=None, logdir=None, modulename=''):
 
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(screenlevel)
+    stream_handler.setFormatter(
+        logging.Formatter('%(levelname)s - %(message)s'))
+    root.addHandler(stream_handler)
     if filename and not filename == 'None':
         filename = filename.replace("{date}", datetime.date.today().strftime("%Y%m%d"))
         all_logs_filename = os.path.join(logdir, filename + '.log')
@@ -111,6 +125,9 @@ def init_logger(screenlevel, filename=None, logdir=None, modulename=''):
 
         file_handler2 = handlers.RotatingFileHandler(all_logs_filename, maxBytes=300000, backupCount=20)
         file_handler2.setLevel(logging.DEBUG)
+
+        remove_color_filter = RemoveColorFilter()
+        file_handler2.addFilter(remove_color_filter)
 
         error_handler = handlers.RotatingFileHandler(error_filename, maxBytes=300000, backupCount=20)
         error_handler.setLevel(logging.WARNING)
@@ -132,9 +149,7 @@ def init_logger(screenlevel, filename=None, logdir=None, modulename=''):
         root.addHandler(info_handler)
 
     # screen output formatter
-    stream_handler.setFormatter(
-        logging.Formatter('%(levelname)s - %(message)s'))
-    root.addHandler(stream_handler)
+
 
     mainlogger = logging.getLogger(modulename)
     mainlogger.setLevel(logging.DEBUG)
